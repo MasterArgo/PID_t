@@ -1,5 +1,5 @@
-#ifndef PID_C_H
-#define PID_C_H
+#ifndef PID_T_H
+#define PID_T_H
 
 #include <float.h>
 
@@ -88,3 +88,4 @@ class PID_t{
 void troca(double &a, double &b);
 
 #endif
+

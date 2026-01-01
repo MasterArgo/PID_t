@@ -5,7 +5,7 @@
 	* Biblioteca pensada para plataforma Arduino IDE
 ****************************************************************************************/
 
-#include "PID_c.h"
+#include "PID_t.h"
 #include <Arduino.h>
 
 /*Compute()******************************************************************************
@@ -263,4 +263,5 @@ void troca(double &a, double &b){
 
     return;
 }
+
 

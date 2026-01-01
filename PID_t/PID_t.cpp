@@ -62,8 +62,7 @@ double PID_t::integral(double err, double dt){
     if(output >= maximo && err > 0){
         // já está no máximo e erro positivo -> não acumula
         return soma_err_int;
-    }
-    else if(output <= minimo && err < 0){
+    }else if(output <= minimo && err < 0){
         // já está no mínimo e erro negativo -> não acumula
         return soma_err_int;
     }
@@ -264,3 +263,4 @@ void troca(double &a, double &b){
 
     return;
 }
+

@@ -1,4 +1,4 @@
-#include "PID_c.h"
+#include "PID_t.h"
 
 const int resistorPin = A5;   // entrada analógica (fotoresistor)
 const int ledPin = 3;         // saída PWM (LED)

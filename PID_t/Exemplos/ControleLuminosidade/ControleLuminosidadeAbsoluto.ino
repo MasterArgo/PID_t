@@ -6,8 +6,8 @@ const int potPin = A0;        // potenciômetro para definir setpoint
 
 PID_t pid;
 
-double Kp = 1;
-double Ki = 4;
+double Kp = 0.5;
+double Ki = 10;
 double Kd = 0.0;
 
 void setup() {

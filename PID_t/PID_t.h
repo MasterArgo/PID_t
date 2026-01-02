@@ -58,6 +58,7 @@ class PID_t{
         // Funções auxiliares
         double integral(double err, double dt);
         double derivativo(double err, double dt);
+        void ExecucaoLimites();
 
     public:
         // Construtor e destrutor
@@ -82,10 +83,10 @@ class PID_t{
 
         // Utilitários
         void Reset();
-        void ExecucaoLimites();
 };
 
 void troca(double &a, double &b);
 
 #endif
+
 

@@ -3,90 +3,116 @@
 
 #include <float.h>
 
-// Estado Desligado/Ligado
-enum ModoPID{MANUAL, AUTOMATICO};
+// -----------------------------
+// ENUMS DE CONFIGURAÇÃO
+// -----------------------------
+
+// Estado do controlador
+enum ModoPID { MANUAL, AUTOMATICO };
 
 // Sentido de funcionamento
-enum SentidoPID{DIRETO, INVERSO};
+enum SentidoPID { DIRETO, INVERSO };
 
-// Tipo de funcionamento
-enum TipoPID{ABSOLUTO, INCREMENTAL};
+// Tipo de cálculo
+enum TipoPID { ABSOLUTO, INCREMENTAL };
 
 // Estilo de anti-windup
-enum EstiloPID{CLASSICO, PERSONALIZADO};
+enum EstiloPID { CLASSICO, PERSONALIZADO };
 
-// Classe PID, o coração dessa biblioteca
-class PID_t{
-    private:
-        // Constantes de PID
-        double Kp;
-        double Ki;
-        double Kd;
 
-        // Tempo
-        unsigned long tempo;
-        unsigned long ultimo_tempo;
+// -----------------------------
+// CLASSE PRINCIPAL PID_t
+// -----------------------------
+class PID_t {
+private:
+    // -----------------------------
+    // CONSTANTES DE AJUSTE
+    // -----------------------------
+    double Kp;   // Ganho proporcional
+    double Ki;   // Ganho integral
+    double Kd;   // Ganho derivativo
 
-        // Variáveis auxiliares
-        double ultimo_err;
-        double dif_err_der;
-        double soma_err_int;
+    // -----------------------------
+    // CONTROLE DE TEMPO
+    // -----------------------------
+    unsigned long tempo;         // Intervalo de execução (ms)
+    unsigned long ultimo_tempo;  // Última execução
 
-        // Limites
-        double minimo;
-        double maximo;
-        double integral_min;
-        double integral_max;
+    // -----------------------------
+    // VARIÁVEIS INTERNAS DE CÁLCULO
+    // -----------------------------
+    double ultimo_err;     // Último erro (para derivativo)
+    double dif_err_der;    // Diferença de erro (derivativo)
+    double soma_err_int;   // Soma acumulada do erro (integral)
 
-        // Alvo
-        double input;
-        double output;
-        double setpoint;
+    // -----------------------------
+    // LIMITES
+    // -----------------------------
+    double minimo;         // Limite mínimo da saída
+    double maximo;         // Limite máximo da saída
+    double integral_min;   // Limite mínimo da integral
+    double integral_max;   // Limite máximo da integral
 
-        // Sentido (Direto/Inverso)
-        SentidoPID sentido;
+    // -----------------------------
+    // VARIÁVEIS DE PROCESSO
+    // -----------------------------
+    double input;          // Valor medido (feedback)
+    double output;         // Saída calculada
+    double setpoint;       // Alvo desejado
 
-        // Modo (Manual/Automático)
-        ModoPID modo;
+    // -----------------------------
+    // CONFIGURAÇÕES DE MODO
+    // -----------------------------
+    SentidoPID sentido;    // Direto ou inverso
+    ModoPID modo;          // Manual ou automático
+    TipoPID tipo;          // Absoluto ou incremental
+    EstiloPID estilo;      // Anti-windup clássico ou personalizado
 
-        // Tipo (Absoluto/Incremental)
-        TipoPID tipo;
+    // -----------------------------
+    // FUNÇÕES AUXILIARES INTERNAS
+    // -----------------------------
+    double integral(double err, double dt);   // Cálculo do termo integral
+    double derivativo(double err, double dt); // Cálculo do termo derivativo
+    void ExecucaoLimites();                   // Aplica limites de saída e integral
 
-        // Estilo (Classico/Personalizado)
-        EstiloPID estilo;
+public:
+    // -----------------------------
+    // CONSTRUTOR / DESTRUTOR
+    // -----------------------------
+    PID_t();
+    ~PID_t();
 
-        // Funções auxiliares
-        double integral(double err, double dt);
-        double derivativo(double err, double dt);
-        void ExecucaoLimites();
+    // -----------------------------
+    // FUNÇÃO PRINCIPAL
+    // -----------------------------
+    void Compute();   // Executa o cálculo PID
 
-    public:
-        // Construtor e destrutor
-        PID_t();
-        ~PID_t();
+    // -----------------------------
+    // CONFIGURAÇÃO DE CONSTANTES
+    // -----------------------------
+    void DefConstantes(double Kp_inicial, double Ki_inicial, double Kd_inicial);
 
-        // Funções principais
-        void Compute();
-        void DefConstantes(double Kp_inicializador, double Ki_inicializador, double Kd_inicializador);
+    // -----------------------------
+    // CONFIGURAÇÕES DE OPERAÇÃO
+    // -----------------------------
+    void DefIntervalo(unsigned long tempo);           // Intervalo de execução
+    void DefModo(ModoPID novo_modo);                  // Define modo
+    void DefTipo(TipoPID novo_tipo);                  // Define tipo
+    void DefSentido(SentidoPID novo_sentido);         // Define sentido
+    void DefEstilo(EstiloPID novo_estilo);            // Define estilo anti-windup
+    void DefLimitesSaida(double func_min, double func_max);     // Limites da saída
+    void DefLimitesIntegral(double func_min, double func_max);  // Limites da integral
+    void DefSetpoint(double func_setpoint);           // Define alvo
+    void DefInput(double func_input);                 // Define entrada
+    double LerOutput();                               // Lê saída atual
 
-        // Configurações
-        void DefIntervalo(unsigned long tempo);
-        void DefSetpoint(double func_setpoint);
-        void DefInput(double func_input);
-        double LerOutput();
-        void DefModo(ModoPID novo_modo);
-        void DefTipo(TipoPID novo_tipo);
-        void DefSentido(SentidoPID novo_sentido);
-        void DefEstilo(EstiloPID novo_estilo);
-        void DefLimitesSaida(double func_min, double func_max);
-        void DefLimitesIntegral(double func_min, double func_max);
-
-        // Utilitários
-        void Reset();
+    // -----------------------------
+    // UTILITÁRIOS
+    // -----------------------------
+    void Reset();   // Reseta variáveis internas
 };
 
+// Função utilitária externa
 void troca(double &a, double &b);
 
 #endif
-
-

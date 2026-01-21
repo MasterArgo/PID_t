@@ -14,6 +14,11 @@
  * Histórico:
  *   v1.0.0 - Primeira versão em linguagem C
  *   v2.0.0 - Reescrita em C++ com suporte a estilos de anti-windup
+ *   v2.0.1 - Reorganização do método compute() e chamada inline das auxiliares internas.
+ *            A função compute agora retorna o output.
+ *   v2.1.2 - Adição de um modo mais preciso, usando micros(). Otimização do método
+ *            compute().
+ *   v2.2.2 - Adição de uma estrutura para coletar logs
  *
  * Licença:
  *   Este código é licenciado sob a MIT License.
@@ -51,12 +56,13 @@ PID_t::PID_t()
       ultimo_err(0),
       soma_err_int(0),
       dif_err_der(0),
-      ultimo_tempo(millis()),
       minimo(-FLT_MAX),
       maximo(FLT_MAX),
       sentido(DIRETO),
       modo(AUTOMATICO),
       tipo(INCREMENTAL),
+      precisao(NORMAL),
+      ultimo_tempo(precisao == PRECISO ? micros() : millis()),
       estilo(PERSONALIZADO),
       integral_min(-FLT_MAX),
       integral_max(FLT_MAX) {}
@@ -112,27 +118,24 @@ PID_t::~PID_t(){
  *  - Os limites garantem que a saída e a integral não ultrapassem valores válidos.
  *
  * Retorno:
- *  - Não retorna valor (void). A saída final fica armazenada em 'output'.
+ *  - Retorna o Output.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::Compute(){
+double PID_t::Compute(){
     if(modo == AUTOMATICO){
-        double err = setpoint - input;
-        unsigned long tempo_decorrido = millis() - ultimo_tempo;
-        double output_aux;
+        unsigned long agora = (precisao == PRECISO ? micros() : millis());
+        unsigned long tempo_decorrido = agora - ultimo_tempo;
 
         if(tempo_decorrido >= tempo){
-            double tempo_segundos;
-            ultimo_tempo = millis();
-            tempo_segundos = tempo_decorrido / 1000.0;
+            double output_aux;
+            double err = setpoint - input;
 
-            if(sentido == INVERSO){
-                err = -err;
-            }
+            ultimo_tempo = agora;
 
             // Cálculo PID
-            output_aux = Kp * err + Ki * integral(err, tempo_segundos) + Kd * derivativo(err, tempo_segundos);
+            output_aux = Kp * err + Ki * integral(err, tempo_decorrido) + Kd * derivativo(err, tempo_decorrido);
             output = (tipo == ABSOLUTO)? output_aux : output + output_aux;
+
             // Atualiza o erro
             ultimo_err = err;
 
@@ -141,7 +144,7 @@ void PID_t::Compute(){
         }
     }
 
-    return;
+    return output;
 }
 
 /*----------------------------------------------------------------------------------------
@@ -173,9 +176,21 @@ void PID_t::Compute(){
  *---------------------------------------------------------------------------------------*/
 
 void PID_t::DefConstantes(double Kp_inicializador, double Ki_inicializador, double Kd_inicializador){
+    constexpr int AJUSTE_MICROS = 1000000;
+    constexpr int AJUSTES_MILLIS = 1000;
+    short ajuste = (precisao == PRECISO ? AJUSTE_MICROS : AJUSTES_MILLIS);
+
     Kp = Kp_inicializador;
-    Ki = Ki_inicializador;
-    Kd = Kd_inicializador;
+    // As constantes foram ajustadas na inicialização para que a conversão de ms para s não
+    // precisasse ser feita a cada execução do compute()
+    Ki = Ki_inicializador / ajuste;
+    Kd = Kd_inicializador * ajuste;
+
+    if(sentido == INVERSO){
+        Kp = -Kp;
+        Ki = -Ki;
+        Kd = -Kd;
+    }
 
     return;
 }
@@ -221,7 +236,7 @@ void PID_t::DefIntervalo(unsigned long tempo_func){
  *
  * Funcionamento:
  *   - AUTOMATICO: o controlador executa os cálculos PID normalmente dentro da função Compute().
- *   - MANUAL: o controlador é pausado; Compute() não altera a saída. 
+ *   - MANUAL: o controlador é pausado; Compute() não altera a saída.
  *             Nesse modo, o usuário pode definir manualmente o valor de 'output'.
  *
  * Exemplo de uso:
@@ -326,6 +341,42 @@ void PID_t::DefSentido(SentidoPID novo_sentido){
 
 void PID_t::DefEstilo(EstiloPID novo_estilo){
     estilo = novo_estilo;
+
+    return;
+}
+
+/*----------------------------------------------------------------------------------------
+ * DefPrecisao(...)
+ *
+ * Define a precisão da amostragem.
+ *
+ * Parâmetros:
+ *   nova_precisao - pode ser NORMAL ou PRECISO
+ *
+ * Funcionamento:
+ *   - NORMAL: usa a função millis() para as amostragens, que retorna o tempo com precisão
+ *             de 1 milissegundo.
+ *   - PRECISO: usa a função micros() para as amostragens, que retorna o tempo com precisão
+               de 4 microssegundos.
+ *
+ * Exemplo de uso:
+ *   pid.DefPrecisao(NORMAL);
+ *   pid.DefPrecisao(PRECISO);
+ *
+ * Observações:
+ *   - O estilo NORMAL é suficiente para a maioria dos sistemas.
+ *   - O estilo PRECISO é útil quando se deseja controlar mais precisamente
+ *     o tempo de execução do PID, garantindo intervalos regulares de cálculo.
+ *     Em microcontroladores baseados em ARM, como o ESP32, o uso de micros()
+ *     é eficiente e permite maior resolução temporal sem penalidade significativa.
+ *     Já em placas Arduino clássicas (AVR), o uso de micros() é mais custoso,
+ *     sendo recomendado utilizar millis() quando a resolução de 1 ms for suficiente.
+ *     Dessa forma, o estilo PRECISO deve ser escolhido apenas quando a aplicação
+ *     exigir alta precisão temporal, como em controle de motores ou medições rápidas.
+ *---------------------------------------------------------------------------------------*/
+
+void PID_t::DefPrecisao(PrecisaoPID nova_precisao){
+    precisao = nova_precisao;
 
     return;
 }
@@ -517,7 +568,7 @@ void PID_t::Reset(){
  *   - Evita valores inválidos ou saturação do atuador.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::ExecucaoLimites(){
+inline void PID_t::ExecucaoLimites(){
     if(output < minimo){
         output = minimo;
     }else if(output > maximo){
@@ -549,12 +600,12 @@ void PID_t::ExecucaoLimites(){
  *   - Em sistemas com setpoint oscilante, pode reduzir suavidade.
  *---------------------------------------------------------------------------------------*/
 
-double PID_t::integral(double err, double dt){
+inline double PID_t::integral(double err, double dt){
     // Evita overshoot em alguns tipos de sistema
     // Em sistemas pouco ruidosos, a resposta é mais limpa
     // Por outro lado, em sistemas com oscilação no setpoint,
     // isso pode atrapalhar a suavidade da resposta
-    if(err * ultimo_err <= 0 && estilo == PERSONALIZADO){
+    if(estilo == PERSONALIZADO && err * ultimo_err <= 0){
         soma_err_int = 0;
     }
 
@@ -567,9 +618,9 @@ double PID_t::integral(double err, double dt){
         return soma_err_int;
     }
 
-
     soma_err_int += err * dt;
 
+    // Limita o somatório
     if(soma_err_int > integral_max){
         soma_err_int = integral_max;
     }else if(soma_err_int < integral_min){
@@ -598,12 +649,37 @@ double PID_t::integral(double err, double dt){
  *   - Pode amplificar ruídos se o sistema tiver medições instáveis.
  *---------------------------------------------------------------------------------------*/
 
-double PID_t::derivativo(double err, double dt){
+inline double PID_t::derivativo(double err, double dt){
     if(dt == 0){
         return 0;
     }
 
     return (err - ultimo_err) / dt;
+}
+
+void PID_t::Logs(Logs_t &log){
+    log.dif_err_der = dif_err_der;
+    log.estilo = estilo;
+    log.input = input;
+    log.integral_max = integral_max;
+    log.integral_min = integral_min;
+    log.Kd = Kd;
+    log.Ki = Ki;
+    log.Kp = Kp;
+    log.maximo = maximo;
+    log.minimo = minimo;
+    log.modo = modo;
+    log.output = output;
+    log.precisao = precisao;
+    log.sentido = sentido;
+    log.setpoint = setpoint;
+    log.soma_err_int = soma_err_int;
+    log.tempo = tempo;
+    log.tipo = tipo;
+    log.ultimo_err = ultimo_err;
+    log.ultimo_tempo = ultimo_tempo;
+
+    return;
 }
 
 /*----------------------------------------------------------------------------------------

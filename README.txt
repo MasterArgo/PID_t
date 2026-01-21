@@ -230,3 +230,7 @@ void loop(){
 	Serial.println(valor_saida);
 }
 
+// Como resultado da versão v2.2.1, o método Compute() retorna o output,
+// então pode ser feito:
+// double valor_saida = MeuPID.Compute();
+

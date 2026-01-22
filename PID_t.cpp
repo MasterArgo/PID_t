@@ -1,5 +1,5 @@
 /****************************************************************************************
- * Biblioteca PID_t - Versão 2.0.0
+ * Biblioteca PID_t - Versão 2.2.2
  * Linguagem: C++
  * Autor: Ícaro Razera (icarorazera@gmail.com)
  * Plataforma alvo: Arduino IDE
@@ -23,6 +23,9 @@
  * Licença:
  *   Este código é licenciado sob a MIT License.
  *   Consulte o arquivo LICENSE para mais detalhes.
+ *   
+ * GitHub:
+ *   https://github.com/MasterArgo/PID_t
  ****************************************************************************************/
 
 #include "PID_t.h"
@@ -716,4 +719,5 @@ void troca(double &a, double &b){
 }
 
 // Fim
+
 

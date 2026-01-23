@@ -8,17 +8,17 @@ Como usar?
 1. Crie um objeto PID
 	ex.:
 
-	#include "PID_t.h"	
+	#include "PIDController.h"	
 
-	PID_t MeuPID;
+	PIDController MeuPID;
 	
 2. Defina os ganhos (Kp, Ki, Kd)
-	- Use o método DefConstantes(Kp, Ki, Kd) para atribuir.
+	- Use o método setTunings(Kp, Ki, Kd) para atribuir.
 	ex.:
 
 	...
 
-	MeuPID.DefConstantes(1.0, 2.0, 0.1);
+	MeuPID.setTunings(1.0, 2.0, 0.1);
 
 	//ou alternativamente...:
 
@@ -26,19 +26,19 @@ Como usar?
 	double Ki_MeuPID = 2.0;
 	double Kd_MeuPID = 0.1;
 
-	MeuPID.DefConstantes(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
+	MeuPID.setTunings(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
 
 3. Se quiser um tempo próprio, defina o intervalo de funcionamento do PID
-	- Use o método DefIntervalo(...) para isso.
+	- Use o método setSampleTime(...) para isso.
 
 	ex.:
 
 	...
 
-	MeuPID.DefIntervalo(10); //o intervalo de execução do PID é de 10 ms
+	MeuPID.setSampleTime(10); //o intervalo de execução do PID é de 10 ms
 
-4. Se quiser, escolha o modo de funcionamento. Por padrão, o objeto é inicializado no modo INCREMENTAL. Há dois modos disponíveis para uso: INCREMENTAL e ABSOLUTO.
-	ABSOLUTO:
+4. Se quiser, escolha o modo de funcionamento. Por padrão, o objeto é inicializado no modo INCREMENTAL. Há dois modos disponíveis para uso: INCREMENTAL e ABSOLUTE.
+	ABSOLUTE:
 	    - A saída é substituída apenas pelo valor recém calculado; ou seja, depende apenas dos termos P, I, D.
 	    - Se o erro variar muito de uma leitura para a outra, a saída pode ser muito brusca.
 	    - É como se você olhasse o erro e decidisse imediatamente "a saída deve ser X".
@@ -52,14 +52,14 @@ Como usar?
 
 	...
 
-	MeuPID.DefTipo(INCREMENTAL);
+	MeuPID.setType(INCREMENTAL);
 
-5. Se quiser, escolha o sentido de funcionamento. Por padrão, o objeto é inicializado no sentido DIRETO. Há dois sentidos disponíveis: DIRETO e INVERSO
-	DIRETO:
+5. Se quiser, escolha o sentido de funcionamento. Por padrão, o objeto é inicializado no sentido DIRETO. Há dois sentidos disponíveis: DIRECT e REVERSE
+	DIRECT:
 	    - Quando o erro aumenta, o controlador aumenta a saída 
 	    - Normalmente usado em LED, motores aquecedores...
 
-	INVERSO:
+	REVERSE:
 	    - Quando o erro aumenta, o controlador diminui a saída
 	    - Normalmente usado em freio, válvula...
 
@@ -67,14 +67,14 @@ Como usar?
 
 	...
 
-	MeuPID.DefSentido(DIRETO);
+	MeuPID.setDirection(DIRECT);
 
-6. Se quiser, escolha o estilo de funcionamento. Por padrão, o objeto é inicializado no estilo PERSONALIZADO. Há dois estilos disponíveis: CLASSICO e PERSONALIZADO
-	CLASSICO:
+6. Se quiser, escolha o estilo de funcionamento. Por padrão, o objeto é inicializado no estilo PERSONALIZADO. Há dois estilos disponíveis: CLASSIC e CUSTOM
+	CLASSIC:
 	    - É o método tradicional de anti-windup
 	    - Quando a saída chega ao limite (máximo ou mínimo), a integral para de acumular. Isso evita que o controlador exagere na correção.
 
-	PERSONALIZADO:
+	CUSTOM:
 	    - Além de aplicar o método CLASSICO, ele zera o termo integral quando há mudança de sinal entre o erro atual e o erro anterior. Quando isso acontece, significa que o sistema cruzou o setpoint.
 	    - É uma forma simples proposta por mim para diminuir overshoot.
 
@@ -82,7 +82,7 @@ Como usar?
 
 	...
 	
-	MeuPID.DefEstilo(PERSONALIZADO);
+	MeuPID.setAntiOvershootStyle(CUSTOM);
 
 7. Se quiser, defina os limites de saída. O atuador na prática atua sobre um intervalor de valores. O Arduino por exemplo só aceita valores PWM de 0 a 255. Dessa forma, o limite força 255 caso o PID calcule 300 ou força 0 se o PID calcular -50.
 
@@ -90,7 +90,7 @@ Como usar?
 
 	...
 
-	MeuPID.DefLimitesSaida(0, 255);
+	MeuPID.setOutputLimits(0, 255);
 
 8. Se quiser, defina os limites da integração. Isso faz com que a integral não cresça indefinidamente, o controlador responde mais rápido, e reduz atrasos por excesso de integral acumulada.
 
@@ -98,23 +98,23 @@ Como usar?
 
 	...
 
-	MeuPID.DefLimitesIntegral(-100,100);
+	MeuPID.setintegralLimits(-100,100);
 
 
-9. Existe um método para ligar e desligar o controle PID. Use AUTOMATICO quando quiser ligar o controle e MANUAL quando quiser desligar. Quando o objeto é criado, o controle já vem ligado por padrão.
+9. Existe um método para ligar e desligar o controle PID. Use AUTOMATIC quando quiser ligar o controle e MANUAL quando quiser desligar. Quando o objeto é criado, o controle já vem ligado por padrão.
 
 	ex.:
 
 	...
 
-	MeuPID.DefModo(AUTOMATICO);
+	MeuPID.setMode(AUTOMATICO);
 
 Até então, tem-se algo parecido com isso:
 
-#include "PID_t.h"
+#include "PIDController.h"
 
 // Declaração do objeto de controle PID
-PID_t MeuPID;
+PIDController MeuPID;
 
 // Declaração das constantes de PID
 double Kp_MeuPID = 1.0;
@@ -128,14 +128,14 @@ void setup(){
 	// Note que algumas coisas não precisam ser declaradas caso 
 	// sejam iguais ao que já vem por padrão
 	// Não esqueça de declarar as constantes. Elas são inicializadas em zero
-	MeuPID.DefConstantes(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
-	MeuPID.DefIntervalo(10);
-	MeuPID.DefTipo(INCREMENTAL);		// igual ao padrão
-	MeuPID.DefSentido(DIRETO);		// igual ao padrão
-	MeuPID.DefEstilo(PERSONALIZADO);	// igual ao padrão
-	MeuPID.DefLimitesSaida(0, 255);
-	MeuPID.DefLimitesIntegral(-100,100);	// às vezes não é ncessário
-	MeuPID.DefModo(AUTOMATICO);		// igual ao padrão
+	MeuPID.setTunings(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
+	MeuPID.setSampleTime(10);
+	MeuPID.setType(INCREMENTAL);		// igual ao padrão
+	MeuPID.setDirection(DIRECT);		// igual ao padrão
+	MeuPID.setStyle(CUSTOM);			// igual ao padrão
+	MeuPID.setOutputLimits(0, 255);
+	MeuPID.setIntegrallimits(-100,100);	// às vezes não é ncessário
+	MeuPID.setMode(AUTOMATIC);		// igual ao padrão
 }
 
 10. Com toda essa preparação, falta falar sobre a entrada (input), o alvo (setpoint) e a saída (output). A entrada é normalmente a leitura de algum sensor em que se deseja um controle PID. O método usado para atribuir esse valor deve ser chamado a cada ciclo de execução, já que o output depende do input.
@@ -144,7 +144,7 @@ void setup(){
 
 	...
 	
-	MeuPID.DefInput(leitura_sensor);
+	MeuPID.setInput(leitura_sensor);
 
 11. O setpoint pode ser algo fixo (então declarado no setup) ou algo que queira ser ajustado durante a execução do código. 
 
@@ -152,7 +152,7 @@ void setup(){
 
 	...
 
-	MeuPID.DefSetpoint(leitura_potenciometro);
+	MeuPID.setSetpoint(leitura_potenciometro);
 
 12. O output é justamente a saída calculada.
 
@@ -160,11 +160,11 @@ void setup(){
 
 	...
 
-	saida = MeuPID.LerOutput();
+	saida = MeuPID.getOutput();
 
 No fim, o esqueleto será algo parecido com isto:
 
-#include "PID_t.h"
+#include "PIDController.h"
 
 // Declaração dos pinos do Arduino
 const int sensor = A0;
@@ -172,7 +172,7 @@ const int potenciometro = A1;
 const int porta_saida = 3;
 
 // Declaração do objeto de controle PID
-PID_t MeuPID;
+PIDController MeuPID;
 
 // Declaração das constantes de PID
 double Kp_MeuPID = 1.0;
@@ -186,14 +186,14 @@ void setup(){
 	// Note que algumas coisas não precisam ser declaradas caso 
 	// sejam iguais ao que já vem por padrão
 	// Não esqueça de declarar as constantes. Elas são inicializadas em zero
-	MeuPID.DefConstantes(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
-	MeuPID.DefIntervalo(10);
-	MeuPID.DefTipo(INCREMENTAL);		// igual ao padrão
-	MeuPID.DefSentido(DIRETO);		// igual ao padrão
-	MeuPID.DefEstilo(PERSONALIZADO);	// igual ao padrão
-	MeuPID.DefLimitesSaida(0, 255);
-	MeuPID.DefLimitesIntegral(-100,100);	// às vezes não é ncessário
-	MeuPID.DefModo(AUTOMATICO);		// igual ao padrão
+	MeuPID.setTunings(Kp_MeuPID, Ki_MeuPID, Kd_MeuPID);
+	MeuPID.setSampleTime(10);
+	MeuPID.setType(INCREMENTAL);		// igual ao padrão
+	MeuPID.setDirection(DIRECT);		// igual ao padrão
+	MeuPID.setStyle(CUSTOM);			// igual ao padrão
+	MeuPID.setOutputLimits(0, 255);
+	MeuPID.setIntegrallimits(-100,100);	// às vezes não é ncessário
+	MeuPID.setMode(AUTOMATIC);		// igual ao padrão
 }
 
 void loop(){
@@ -207,16 +207,16 @@ void loop(){
 	int leitura_potenciometro_padronizada = map(leitura_potenciometro, 0, 1023, 0, 255);
 
 	// Hora de definir o input do PID nesse ciclo
-	MeuPID.DefInput(leitura_sensor_padronizada);
+	MeuPID.setInput(leitura_sensor_padronizada);
 
 	// Agora, hora de definir o alvo nesse ciclo
-	MeuPID.DefSetpoint(leitura_potenciometro_padronizada);
+	MeuPID.setSetpoint(leitura_potenciometro_padronizada);
 
 	// Com esses dois definidos, podemos executar os cálculos
 	MeuPID.Compute();
 
 	// O resultado foi escrito no membro output da instância MeuPID. Vamos pegá-lo
-	double valor_saida = MeuPID.LerOutput();
+	double valor_saida = MeuPID.getOutput();
 
 	// Finalmente, escreveremos a saída na devida porta
 	analogWrite(porta_saida, valor_saida);
@@ -232,5 +232,4 @@ void loop(){
 
 // Como resultado da versão v2.2.1, o método Compute() retorna o output,
 // então pode ser feito:
-// double valor_saida = MeuPID.Compute();
-
+// double valor_saida = MeuPID.Compute(); 

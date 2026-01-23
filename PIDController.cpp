@@ -1,5 +1,5 @@
 /****************************************************************************************
- * PIDController Library - Version 2.2.2
+ * PIDController Library - Version 2.3.2
  * Language: C++
  * Author: Ícaro Razera (icarorazera@gmail.com)
  * Target platform: Arduino IDE
@@ -759,3 +759,4 @@ void ensureOrder(double &a, double &b){
 }
 
 // End
+

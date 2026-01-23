@@ -1,195 +1,196 @@
 /****************************************************************************************
- * Biblioteca PID_t - Versão 2.2.2
- * Linguagem: C++
- * Autor: Ícaro Razera (icarorazera@gmail.com)
- * Plataforma alvo: Arduino IDE
+ * PIDController Library - Version 2.2.2
+ * Language: C++
+ * Author: Ícaro Razera (icarorazera@gmail.com)
+ * Target platform: Arduino IDE
  *
- * Descrição:
- *   Implementação de um controlador PID flexível e didático.
- *   - Suporte a modos: MANUAL / AUTOMATICO
- *   - Sentido: DIRETO / INVERSO
- *   - Tipo: ABSOLUTO / INCREMENTAL
- *   - Estilo de anti-windup: CLASSICO / PERSONALIZADO
+ * Description:
+ *      Implementation of a flexible and educational PID controller.
+ *          - Supports modes: MANUAL / AUTOMATIC
+ *          - Direction: DIRECT / REVERSE
+ *          - Type: ABSOLUTE / INCREMENTAL
+ *          - Anti-overshoot style: CLASSIC / CUSTOM
+ *          - Precision: PRECISE / NORMAL
  *
- * Histórico:
- *   v1.0.0 - Primeira versão em linguagem C
- *   v2.0.0 - Reescrita em C++ com suporte a estilos de anti-windup
- *   v2.0.1 - Reorganização do método compute() e chamada inline das auxiliares internas.
- *            A função compute agora retorna o output.
- *   v2.1.2 - Adição de um modo mais preciso, usando micros(). Otimização do método
- *            compute().
- *   v2.2.2 - Adição de uma estrutura para coletar logs
+ * History:
+ *  v1.0.0 - First version in C language
+ *  v2.0.0 - Rewritten in C++ with support for anti-windup styles
+ *  v2.0.1 - Reorganization of the compute() method and inline call of internal helpers.
+ *           The compute function now returns the output.
+ *  v2.1.2 - Added a more precise mode using micros(). Optimization of the compute() method.
+ *  v2.2.2 - Added a structure for collecting logs.
+ *  v2.3.2 - Translation to English.
  *
- * Licença:
- *   Este código é licenciado sob a MIT License.
- *   Consulte o arquivo LICENSE para mais detalhes.
- *   
- * GitHub:
- *   https://github.com/MasterArgo/PID_t
+ * License:
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for more details.
  ****************************************************************************************/
 
-#include "PID_t.h"
+#include "PIDController.h"
 #include <Arduino.h>
 
 /*----------------------------------------------------------------------------------------
- * PID_t()
+ * PIDController()
  *
- * Construtor da classe PID_t.
+ * Constructor of the PIDController class.
  *
- * Inicialização padrão:
- *   - Intervalo de execução: 200 ms
- *   - Modo: AUTOMATICO (controlador já começa ativo)
- *   - Constantes Kp, Ki, Kd: inicializadas em 0.0
- *   - Sentido: DIRETO
- *   - Tipo: INCREMENTAL
- *   - Estilo de anti-windup: PERSONALIZADO
- *   - Limites de saída: [-FLT_MAX, FLT_MAX]
- *   - Limites da integral: [-FLT_MAX, FLT_MAX] (sem restrição inicial)
+ * Default initialization:
+ *      - Execution interval: 200 ms
+ *      - Mode: AUTOMATIC (controller starts active)
+ *      - Constants Kp, Ki, Kd: initialized to 0.0
+ *      - Direction: DIRECT
+ *      - Type: INCREMENTAL
+ *      - Anti-windup style: CUSTOM
+ *      - Output limits: [-FLT_MAX, FLT_MAX]
+ *      - Integral limits: [-FLT_MAX, FLT_MAX] (no initial restriction)
  *
- * Observações:
- *   - Após a criação, o usuário deve configurar as constantes Kp, Ki, Kd
- *     usando DefConstantes().
- *   - Outras variáveis (setpoint, input, limites, estilo, etc.) podem ser
- *     ajustadas conforme necessário no setup().
+ * Notes:
+ *      - After creation, the user must configure the constants Kp, Ki, Kd
+ *        using setTunings().
+ *      - Other variables (setpoint, input, limits, style, etc.) can be
+ *        adjusted as needed in setup().
  *---------------------------------------------------------------------------------------*/
 
-PID_t::PID_t()
+PIDController::PIDController()
     : Kp(0), Ki(0), Kd(0),
-      tempo(200), //intervalo padrão de funcionamento do PID
-      ultimo_err(0),
-      soma_err_int(0),
-      dif_err_der(0),
-      minimo(-FLT_MAX),
-      maximo(FLT_MAX),
-      sentido(DIRETO),
-      modo(AUTOMATICO),
-      tipo(INCREMENTAL),
-      precisao(NORMAL),
-      ultimo_tempo(precisao == PRECISO ? micros() : millis()),
-      estilo(PERSONALIZADO),
-      integral_min(-FLT_MAX),
-      integral_max(FLT_MAX) {}
+      sampleTime(200),
+      prevError(0),
+      integralTerm(0),
+      outputMin(-FLT_MAX),
+      outputMax(FLT_MAX),
+      direction(DIRECT),
+      mode(AUTOMATIC),
+      type(INCREMENTAL),
+      precision(NORMAL),
+      lastComputeTime(precision == PRECISE ? micros() : millis()),
+      antiOvershoot(CUSTOM),
+      integralMin(-FLT_MAX),
+      integralMax(FLT_MAX) {}
+
 
 /*----------------------------------------------------------------------------------------
- * ~PID_t()
+ * ~PIDController()
  *
- * Destrutor da classe PID_t.
+ * Destructor of the PIDController class.
  *
- * Funcionamento:
- *   - Atualmente não realiza nenhuma ação específica, pois a classe não aloca
- *     recursos dinâmicos (como memória via new ou ponteiros).
- *   - É mantido para garantir consistência da interface e permitir futuras
- *     expansões, caso seja necessário liberar recursos externos ou realizar
- *     alguma limpeza.
+ * Behavior:
+ *      - Currently does not perform any specific action, since the class does not
+ *      allocate dynamic resources (such as memory via new or pointers).
+ *      - It is kept to ensure interface consistency and allow future expansions,
+ *      in case it becomes necessary to release external resources or perform
+ *      some cleanup.
  *
- * Observações:
- *   - Em aplicações simples no Arduino, geralmente não há necessidade de lógica
- *     no destrutor, já que os objetos são desalocados automaticamente ao fim
- *     da execução.
- *   - A presença explícita do destrutor facilita manutenção e deixa claro que
- *     não há tarefas pendentes de liberação.
+ * Notes:
+ *      - In simple Arduino applications, there is usually no need for logic in
+ *        the destructor, since objects are automatically deallocated at the end
+ *        of execution.
+ *      - The explicit presence of the destructor makes maintenance easier and
+ *        clarifies that there are no pending release tasks.
  *---------------------------------------------------------------------------------------*/
 
-PID_t::~PID_t(){
+PIDController::~PIDController(){
     // Por enquanto, nada...
 }
 
+
 /*----------------------------------------------------------------------------------------
- * Compute()
+ * compute()
  *
- * Função principal do controlador PID.
- * Executa o cálculo da saída com base no setpoint e no input definidos.
+ * Main function of the PID controller.
+ * Executes the output calculation based on the defined setpoint and input.
  *
- * Fluxo:
- *  1. Verifica se o modo está em AUTOMATICO.
- *  2. Calcula o erro (setpoint - input).
- *  3. Avalia o tempo decorrido desde a última execução.
- *  4. Se o tempo mínimo definido já passou:
- *      - Converte tempo para segundos.
- *      - Inverte o erro caso o sentido seja INVERSO.
- *      - Calcula os termos proporcional, integral e derivativo.
- *      - Atualiza a saída:
- *          • ABSOLUTO: substitui pela nova saída calculada.
- *          • INCREMENTAL: soma a variação calculada à saída anterior.
- *      - Atualiza o último erro para uso futuro.
- *      - Aplica os limites de saída e integral (anti-windup).
+ * Flow:
+ *  1. Checks if the mode is AUTOMATIC.
+ *  2. Calculates the error (setpoint - input).
+ *  3. Evaluates the elapsed time since the last execution.
+ *  4. If the defined minimum time has passed:
+ *      - Converts time to seconds.
+ *      - Inverts the error if the direction is REVERSE.
+ *      - Calculates the proportional, integral, and derivative terms.
+ *      - Updates the output:
+ *          • ABSOLUTE: replaces with the newly calculated output.
+ *          • INCREMENTAL: adds the calculated variation to the previous output.
+ *      - Updates the last error for future use.
+ *      - Applies output and integral limits (anti-windup).
  *
- * Observações:
- *  - A função só atua em modo AUTOMATICO.
- *  - O intervalo de execução é controlado por DefIntervalo().
- *  - O sentido (DIRETO/INVERSO) define se o erro aumenta ou diminui a saída.
- *  - Os limites garantem que a saída e a integral não ultrapassem valores válidos.
+ * Notes:
+ *  - The function only operates in AUTOMATIC mode.
+ *  - The execution interval is controlled by DefIntervalo().
+ *  - The direction (DIRECT/REVERSE) defines whether the error increases or decreases the output.
+ *  - The limits ensure that the output and the integral do not exceed valid values.
  *
- * Retorno:
- *  - Retorna o Output.
+ * Return:
+ *  - Returns the Output.
  *---------------------------------------------------------------------------------------*/
 
-double PID_t::Compute(){
-    if(modo == AUTOMATICO){
-        unsigned long agora = (precisao == PRECISO ? micros() : millis());
-        unsigned long tempo_decorrido = agora - ultimo_tempo;
+double PIDController::compute() {
+    if (mode == AUTOMATIC) {
+        unsigned long now = (precision == PRECISE ? micros() : millis());
+        unsigned long elapsedTime = now - lastComputeTime;
 
-        if(tempo_decorrido >= tempo){
-            double output_aux;
+        if (elapsedTime >= sampleTime) {
+            double outputAux;
             double err = setpoint - input;
 
-            ultimo_tempo = agora;
+            lastComputeTime = now;
 
-            // Cálculo PID
-            output_aux = Kp * err + Ki * integral(err, tempo_decorrido) + Kd * derivativo(err, tempo_decorrido);
-            output = (tipo == ABSOLUTO)? output_aux : output + output_aux;
+            // PID calculation
+            outputAux = Kp * err + Ki * computeIntegral(err, elapsedTime) + Kd * computeDerivative(err, elapsedTime);
 
-            // Atualiza o erro
-            ultimo_err = err;
+            output = (type == ABSOLUTE) ? outputAux : output + outputAux;
 
-            //Aplica os limites
-            ExecucaoLimites();
+            // Update error
+            prevError = err;
+
+            // Apply limits
+            applyLimits();
         }
     }
 
     return output;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefConstantes(...)
+ * setTunings(...)
  *
- * Define os ganhos do controlador PID:
- *   - Kp: ganho proporcional
- *   - Ki: ganho integral
- *   - Kd: ganho derivativo
+ * Defines the gains of the PID controller:
+ *      - Kp: proportional gain
+ *      - Ki: integral gain
+ *      - Kd: derivative gain
  *
- * Parâmetros:
- *   Kp_inicializador - constante proporcional
- *   Ki_inicializador - constante integral
- *   Kd_inicializador - constante derivativa
+ * Parameters:
+ *      Kp_init - proportional constant
+ *      Ki_init - integral constant
+ *      Kd_init - derivative constant
  *
- * Funcionamento:
- *   - Esses valores determinam a intensidade da resposta do controlador.
- *   - Kp controla a reação imediata ao erro.
- *   - Ki acumula o erro ao longo do tempo (corrige offset).
- *   - Kd reage à taxa de variação do erro (suaviza oscilações).
- *   - A função apenas armazena os valores; o cálculo é feito em Compute().
+ * Behavior:
+ *      - These values determine the intensity of the controller's response.
+ *      - Kp controls the immediate reaction to the error.
+ *      - Ki accumulates the error over time (corrects offset).
+ *      - Kd reacts to the rate of change of the error (smooths oscillations).
+ *      - The function only stores the values; the calculation is performed in Compute().
  *
- * Exemplo de uso:
- *   MeuPID.DefConstantes(1.0, 2.0, 0.1);
+ * Example of use:
+ *      MyPID.setTunings(1.0, 2.0, 0.1);
  *
- * Observação:
- *   Ajustar corretamente Kp, Ki e Kd é essencial para estabilidade.
- *   Valores muito altos podem causar oscilação; muito baixos podem deixar o sistema lento.
+ * Note:
+ *      Proper tuning of Kp, Ki, and Kd is essential for stability.
+ *      Values that are too high may cause oscillation; values that are too low may make the system slow.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefConstantes(double Kp_inicializador, double Ki_inicializador, double Kd_inicializador){
-    constexpr int AJUSTE_MICROS = 1000000;
-    constexpr int AJUSTES_MILLIS = 1000;
-    short ajuste = (precisao == PRECISO ? AJUSTE_MICROS : AJUSTES_MILLIS);
+void PIDController::setTunings(double Kp_init, double Ki_init, double Kd_init) {
+    constexpr double ADJUST_MICROS = 1000000.0;
+    constexpr double ADJUST_MILLIS = 1000.0;
+    double adjust = (precision == PRECISE ? ADJUST_MICROS : ADJUST_MILLIS);
 
-    Kp = Kp_inicializador;
-    // As constantes foram ajustadas na inicialização para que a conversão de ms para s não
-    // precisasse ser feita a cada execução do compute()
-    Ki = Ki_inicializador / ajuste;
-    Kd = Kd_inicializador * ajuste;
+    Kp = Kp_init;
+    // Constants are adjusted at initialization so that the conversion
+    // from ms to s does not need to be performed at each compute() execution
+    Ki = Ki_init / adjust;
+    Kd = Kd_init * adjust;
 
-    if(sentido == INVERSO){
+    if (direction == REVERSE) {
         Kp = -Kp;
         Ki = -Ki;
         Kd = -Kd;
@@ -198,517 +199,556 @@ void PID_t::DefConstantes(double Kp_inicializador, double Ki_inicializador, doub
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefIntervalo(...)
+ * setSampleTime(...)
  *
- * Define o intervalo mínimo de tempo (em milissegundos) entre cada execução do cálculo PID.
+ * Defines the minimum time interval (in milliseconds) between each execution of the PID calculation.
  *
- * Parâmetros:
- *   tempo_func - valor em milissegundos que representa o período de amostragem do controlador.
+ * Parameters:
+ *      newSampleTime - value in milliseconds representing the controller's sampling period.
  *
- * Funcionamento:
- *   - O valor armazenado em 'tempo' será usado dentro da função Compute().
- *   - Compute() só executará o cálculo se o tempo decorrido desde a última execução
- *     for maior ou igual a 'tempo'.
- *   - Isso evita que o PID seja recalculado em intervalos muito curtos, garantindo
- *     estabilidade e reduzindo sobrecarga de CPU.
+ * Behavior:
+ *      - The value stored in 'tempo' will be used inside the Compute() function.
+ *      - Compute() will only execute the calculation if the elapsed time since the last execution
+ *        is greater than or equal to 'tempo'.
+ *      - This prevents the PID from being recalculated at very short intervals, ensuring
+ *        stability and reducing CPU overhead.
  *
- * Exemplo de uso:
- *   MeuPID.DefIntervalo(100);   // Executa o PID a cada 100 ms
+ * Example of use:
+ *      MyPID.setSampleTime(100);   // Executes the PID every 100 ms
  *
- * Observação:
- *   O valor escolhido deve ser compatível com a dinâmica do sistema físico.
- *   Intervalos muito pequenos podem gerar ruído; intervalos muito grandes podem
- *   deixar o controle lento.
+ * Note:
+ *      The chosen value must be compatible with the dynamics of the physical system.
+ *      Very small intervals may generate noise; very large intervals may
+ *      make the control sluggish.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefIntervalo(unsigned long tempo_func){
-    tempo = tempo_func;
+void PIDController::setSampleTime(unsigned long newSampleTime) {
+    sampleTime = newSampleTime;
 
     return;
 }
 
 
 /*----------------------------------------------------------------------------------------
- * DefModo(...)
+ * setMode(...)
  *
- * Alterna o modo de operação do controlador PID.
+ * Switches the operating mode of the PID controller.
  *
- * Parâmetros:
- *   novo_modo - pode ser AUTOMATICO ou MANUAL
+ * Parameters:
+ *      newNode - can be AUTOMATIC or MANUAL
  *
- * Funcionamento:
- *   - AUTOMATICO: o controlador executa os cálculos PID normalmente dentro da função Compute().
- *   - MANUAL: o controlador é pausado; Compute() não altera a saída.
- *             Nesse modo, o usuário pode definir manualmente o valor de 'output'.
+ * Behavior:
+ *      - AUTOMATIC: the controller executes the PID calculations normally within the Compute() function.
+ *      - MANUAL: the controller is paused; Compute() does not change the output.
+ *                In this mode, the user can manually set the value of 'output'.
  *
- * Exemplo de uso:
- *   pid.DefModo(MANUAL);      // pausa o PID e permite controlar a saída manualmente
- *   pid.DefModo(AUTOMATICO);  // ativa o PID para calcular a saída automaticamente
+ * Example of use:
+ *      pid.setMode(MANUAL);      // pauses the PID and allows manual control of the output
+ *      pid.setMode(AUTOMATIC);   // enables the PID to automatically calculate the output
  *
- * Observações:
- *   - Útil para iniciar o sistema em MANUAL e só depois habilitar o PID em AUTOMATICO.
- *   - Também pode ser usado para testes ou situações em que o controle automático
- *     precisa ser temporariamente desativado.
+ * Notes:
+ *      - Useful for starting the system in MANUAL and only later enabling the PID in AUTOMATIC.
+ *      - Can also be used for testing or situations where automatic control
+ *        needs to be temporarily disabled.
  *---------------------------------------------------------------------------------------*/
 
-
-void PID_t::DefModo(ModoPID novo_modo){
-    modo = novo_modo;
+void PIDController::setMode(PIDMode newMode) {
+    mode = newMode;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefTipo(...)
+ * setType(...)
  *
- * Define o tipo de cálculo do controlador PID.
+ * Defines the calculation type of the PID controller.
  *
- * Parâmetros:
- *   novo_tipo - pode ser ABSOLUTO ou INCREMENTAL
+ * Parameters:
+ *   newType - can be ABSOLUTE or INCREMENTAL
  *
- * Funcionamento:
- *   - ABSOLUTO: a saída calculada substitui diretamente o valor anterior.
- *               Exemplo: output = novo_valor;
- *   - INCREMENTAL: a saída calculada é somada ao valor anterior, representando
- *                  apenas a variação necessária.
- *               Exemplo: output = output + delta;
+ * Behavior:
+ *      - ABSOLUTE: the calculated output directly replaces the previous value.
+ *                   Example: output = newValue;
+ *      - INCREMENTAL: the calculated output is added to the previous value,
+ *                     epresenting only the required variation.
+ *                   Example: output = output + delta;
  *
- * Exemplo de uso:
- *   pid.DefTipo(ABSOLUTO);     // saída sempre recalculada do zero
- *   pid.DefTipo(INCREMENTAL);  // saída ajustada incrementalmente
+ * Example of use:
+ *      pid.setType(ABSOLUTE);     // output always recalculated from zero
+ *      pid.setType(INCREMENTAL);  // output adjusted incrementally
  *
- * Observações:
- *   - O modo ABSOLUTO é mais intuitivo e comum em sistemas simples.
- *   - O modo INCREMENTAL pode ser útil em sistemas discretos ou quando se deseja
- *     aplicar apenas correções relativas.
+ * Notes:
+ *      - The ABSOLUTE mode is more intuitive and common in simple systems.
+ *      - The INCREMENTAL mode can be useful in discrete systems or when only
+ *        relative corrections are desired.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefTipo(TipoPID novo_tipo){
-    tipo = novo_tipo;
+void PIDController::setType(PIDType newType) {
+    type = newType;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefSentido(...)
+ * setDirection(...)
  *
- * Define o sentido de atuação do controlador PID.
+ * Defines the action direction of the PID controller.
  *
- * Parâmetros:
- *   novo_sentido - pode ser DIRETO ou INVERSO
+ * Parameters:
+ *      newDirection - can be DIRECT or REVERSE
  *
- * Funcionamento:
- *   - DIRETO: erro positivo aumenta a saída.
- *   - INVERSO: erro positivo diminui a saída (erro é invertido internamente).
+ * Behavior:
+ *      - DIRECT: a positive error increases the output.
+ *      - REVERSE: a positive error decreases the output (the error is internally inverted).
  *
- * Exemplo de uso:
- *   pid.DefSentido(DIRETO);   // saída cresce quando input < setpoint
- *   pid.DefSentido(INVERSO);  // saída diminui quando input < setpoint
+ * Example of use:
+ *      pid.setDirection(DIRECT);   // output increases when input < setpoint
+ *      pid.setDirection(REVERSE);  // output decreases when input < setpoint
  *
- * Observações:
- *   - Útil para adaptar o controlador ao sistema físico.
- *   - Exemplo: em um aquecedor, sentido DIRETO aumenta potência quando a temperatura
- *     está abaixo do setpoint. Já em um sistema de resfriamento, pode ser necessário
- *     usar INVERSO.
+ * Notes:
+ *      - Useful for adapting the controller to the physical system.
+ *      - Example: in a heater, DIRECT increases power when the temperature
+ *        is below the setpoint. In a cooling system, it may be necessary
+ *        to use REVERSE.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefSentido(SentidoPID novo_sentido){
-    sentido = novo_sentido;
+void PIDController::setDirection(PIDDirection newDirection) {
+    direction = newDirection;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefEstilo(...)
+ * setAntiOvershootStyle(...)
  *
- * Define o estilo de anti-windup (controle da saturação da integral).
+ * Defines the anti-windup style (technique to prevent overshoot caused by integral saturation).
  *
- * Parâmetros:
- *   novo_estilo - pode ser CLASSICO ou PERSONALIZADO
+ * Parameters:
+ *      newStyle - can be CLASSIC or CUSTOM
  *
- * Funcionamento:
- *   - CLASSICO: aplica anti-windup tradicional, limitando a integral de forma simples.
- *   - PERSONALIZADO: permite maior flexibilidade, aplicando limites definidos pelo usuário
- *                    via DefLimitesIntegral().
+ * Behavior:
+ *      - CLASSIC: applies the traditional anti-windup method, limiting the integral in a simple way.
+ *      - CUSTOM: allows greater flexibility, applying user-defined limits
+ *                via DefIntegralLimits().
  *
- * Exemplo de uso:
- *   pid.DefEstilo(CLASSICO);       // usa anti-windup padrão
- *   pid.DefEstilo(PERSONALIZADO);  // usa limites definidos pelo usuário
+ * Example of use:
+ *      pid.setAntiOvershootStyle(CLASSIC);       // uses standard anti-windup
+ *      pid.setAntiOvershootStyle(CUSTOM);        // uses user-defined limits
  *
- * Observações:
- *   - O estilo CLASSICO é suficiente para a maioria dos sistemas.
- *   - O estilo PERSONALIZADO é útil quando se deseja controlar mais precisamente
- *     o comportamento da integral, evitando saturação ou resposta lenta.
+ * Notes:
+ *      - The CLASSIC style is sufficient for most systems.
+ *      - The CUSTOM style is useful when more precise control of the integral
+ *        behavior is desired, avoiding overshoot or sluggish response.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefEstilo(EstiloPID novo_estilo){
-    estilo = novo_estilo;
+void PIDController::setAntiOvershootStyle(PIDAntiOvershootStyle newStyle) {
+    antiOvershoot = newStyle;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefPrecisao(...)
+ * setPrecision(...)
  *
- * Define a precisão da amostragem.
+ * Defines the sampling precision.
  *
- * Parâmetros:
- *   nova_precisao - pode ser NORMAL ou PRECISO
+ * Parameters:
+ *      newPrecision - can be NORMAL or PRECISE
  *
- * Funcionamento:
- *   - NORMAL: usa a função millis() para as amostragens, que retorna o tempo com precisão
- *             de 1 milissegundo.
- *   - PRECISO: usa a função micros() para as amostragens, que retorna o tempo com precisão
-               de 4 microssegundos.
+ * Behavior:
+ *      - NORMAL: uses the millis() function for sampling, which returns time with
+ *                1 millisecond precision.
+ *      - PRECISE: uses the micros() function for sampling, which returns time with
+ *                 4 microseconds precision.
  *
- * Exemplo de uso:
- *   pid.DefPrecisao(NORMAL);
- *   pid.DefPrecisao(PRECISO);
+ * Example of use:
+ *      pid.setPrecision(NORMAL);
+ *      pid.setPrecision(PRECISE);
  *
- * Observações:
- *   - O estilo NORMAL é suficiente para a maioria dos sistemas.
- *   - O estilo PRECISO é útil quando se deseja controlar mais precisamente
- *     o tempo de execução do PID, garantindo intervalos regulares de cálculo.
- *     Em microcontroladores baseados em ARM, como o ESP32, o uso de micros()
- *     é eficiente e permite maior resolução temporal sem penalidade significativa.
- *     Já em placas Arduino clássicas (AVR), o uso de micros() é mais custoso,
- *     sendo recomendado utilizar millis() quando a resolução de 1 ms for suficiente.
- *     Dessa forma, o estilo PRECISO deve ser escolhido apenas quando a aplicação
- *     exigir alta precisão temporal, como em controle de motores ou medições rápidas.
+ * Notes:
+ *      - The NORMAL style is sufficient for most systems.
+ *      - The PRECISE style is useful when tighter control of PID execution timing
+ *        is required, ensuring regular calculation intervals.
+ *        On ARM-based microcontrollers, such as the ESP32, the use of micros()
+ *        is efficient and provides higher temporal resolution without significant penalty.
+ *        On classic Arduino boards (AVR), however, the use of micros() is more costly,
+ *        so millis() is recommended when 1 ms resolution is sufficient.
+ *        Therefore, the PRECISE style should only be chosen when the application
+ *        demands high temporal accuracy, such as in motor control or fast measurements.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefPrecisao(PrecisaoPID nova_precisao){
-    precisao = nova_precisao;
+void PIDController::setPrecision(PIDPrecision newPrecision) {
+    precision = newPrecision;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefLimitesSaida(...)
+ * setOutputLimits(...)
  *
- * Define os limites mínimo e máximo da saída do controlador PID.
+ * Defines the minimum and maximum limits of the PID controller output.
  *
- * Parâmetros:
- *   func_min - valor mínimo permitido para a saída
- *   func_max - valor máximo permitido para a saída
+ * Parameters:
+ *      minVal - minimum allowed output value
+ *      maxVal - maximum allowed output value
  *
- * Funcionamento:
- *   - Os valores são armazenados em 'minimo' e 'maximo'.
- *   - A função troca(func_min, func_max) garante que o menor valor fique em 'minimo'
- *     e o maior em 'maximo', mesmo que sejam passados invertidos.
- *   - Durante o cálculo em Compute(), a saída é limitada dentro desse intervalo.
+ * Behavior:
+ *      - The values are stored in 'minimum' and 'maximum'.
+ *      - The ensureOrder(minVal, maxVal) function ensures that the smaller value is stored
+ *        in 'minimum' and the larger in 'maximum', even if passed in reversed order.
+ *      - During the calculation in Compute(), the output is constrained within this range.
  *
- * Exemplo de uso:
- *   pid.DefLimitesSaida(0, 255);   // saída limitada entre 0 e 255
+ * Example of use:
+ *      pid.setOutputLimits(0, 255);   // output limited between 0 and 255
  *
- * Observações:
- *   - Útil para sistemas com restrições físicas (ex.: PWM de 0–255).
- *   - Evita saturação ou valores inválidos na saída.
+ * Notes:
+ *      - Useful for systems with physical restrictions (e.g., PWM from 0–255).
+ *      - Prevents saturation or invalid output values.
  *---------------------------------------------------------------------------------------*/
 
+void PIDController::setOutputLimits(double minVal, double maxVal) {
+    ensureOrder(minVal, maxVal);
 
-void PID_t::DefLimitesSaida(double func_min, double func_max){
-    troca(func_min, func_max);
-
-    minimo = func_min;
-    maximo = func_max;
+    outputMin = minVal;
+    outputMax = maxVal;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefLimitesIntegral(...)
+ * setIntegralLimits(...)
  *
- * Define os limites mínimo e máximo para o termo integral do controlador PID.
+ * Defines the minimum and maximum limits for the integral term of the PID controller.
  *
- * Parâmetros:
- *   func_min - limite inferior da integral
- *   func_max - limite superior da integral
+ * Parameters:
+ *      minVal - lower limit of the integral
+ *      maxVal - upper limit of the integral
  *
- * Funcionamento:
- *   - Os valores são armazenados em 'integral_min' e 'integral_max'.
- *   - A função troca(func_min, func_max) garante que o menor valor fique em 'integral_min'
- *     e o maior em 'integral_max'.
- *   - Durante o cálculo, o somatório do erro * dt é limitado dentro desse intervalo
- *     para evitar saturação (anti-windup).
+ * Behavior:
+ *      - The values are stored in 'integral_min' and 'integral_max'.
+ *      - The ensureOrder(minVal, maxVal) function ensures that the smaller value is stored
+ *        in 'integralMin' and the larger in 'integralMax'.
+ *      - During the calculation, the sum of error * dt is constrained within this range
+ *        to prevent integral saturation (anti-windup).
  *
- * Exemplo de uso:
- *   pid.DefLimitesIntegral(-100, 100);   // integral limitada entre -100 e 100
+ * Example of use:
+ *      pid.setIntegralLimits(-100, 100);   // integral limited between -100 and 100
  *
- * Observações:
- *   - Essencial para evitar que o termo integral cresça indefinidamente.
- *   - Valores muito restritos podem reduzir a ação corretiva da integral.
+ * Notes:
+ *      - Essential to prevent the integral term from growing indefinitely.
+ *      - Overly restrictive values may reduce the corrective action of the integral.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefLimitesIntegral(double func_min, double func_max){
-    troca(func_min, func_max);
+void PIDController::setIntegralLimits(double minVal, double maxVal) {
+    ensureOrder(minVal, maxVal);
 
-    integral_max = func_max;
-    integral_min = func_min;
+    integralMax = maxVal;
+    integralMin = minVal;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefSetpoint(...)
+ * setSetpoint(...)
  *
- * Define o valor alvo (setpoint) do controlador PID.
+ * Defines the target value (setpoint) of the PID controller.
  *
- * Parâmetros:
- *   func_setpoint - valor desejado para o processo controlado
+ * Parameters:
+ *      newSetpoint - desired value for the controlled process
  *
- * Funcionamento:
- *   - O valor é armazenado em 'setpoint'.
- *   - Durante o cálculo em Compute(), o erro é obtido como (setpoint - input).
+ * Behavior:
+ *      - The value is stored in 'setpoint'.
+ *      - During the calculation in compute(), the error is obtained as (setpoint - input).
  *
- * Exemplo de uso:
- *   pid.DefSetpoint(100.0);   // define alvo de 100 unidades
+ * Example of use:
+ *      pid.setSetpoint(100.0);   // sets target to 100 units
  *
- * Observações:
- *   - O setpoint pode ser alterado dinamicamente durante a execução.
- *   - É o valor que o sistema tentará alcançar e manter.
+ * Notes:
+ *      - The setpoint can be dynamically changed during execution.
+ *      - It is the value that the system will attempt to reach and maintain.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefSetpoint(double func_setpoint){
-    setpoint = func_setpoint;
+void PIDController::setSetpoint(double newSetpoint) {
+    setpoint = newSetpoint;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * DefInput(...)
+ * setInput(...)
  *
- * Define o valor de entrada (feedback) do controlador PID.
+ * Defines the input value (feedback) of the PID controller.
  *
- * Parâmetros:
- *   func_input - valor medido do processo
+ * Parameters:
+ *      newInput - measured value of the process
  *
- * Funcionamento:
- *   - O valor é armazenado em 'input'.
- *   - Durante o cálculo em Compute(), o erro é obtido como (setpoint - input).
+ * Behavior:
+ *      - The value is stored in 'input'.
+ *      - During the calculation in compute(), the error is obtained as (setpoint - input).
  *
- * Exemplo de uso:
- *   pid.DefInput(sensorValue);   // define entrada a partir de leitura de sensor
+ * Example of use:
+ *      pid.setInput(sensorValue);   // sets input from sensor reading
  *
- * Observações:
- *   - Deve ser atualizado a cada ciclo com o valor real do sistema.
- *   - Representa a variável controlada (ex.: temperatura, velocidade, posição).
+ * Notes:
+ *      - Must be updated every cycle with the actual system value.
+ *      - Represents the controlled variable (e.g., temperature, speed, position).
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::DefInput(double func_input){
-    input = func_input;
+void PIDController::setInput(double newInput) {
+    input = newInput;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * LerOutput()
+ * getOutput()
  *
- * Retorna o valor atual da saída calculada pelo controlador PID.
+ * Returns the current output value calculated by the PID controller.
  *
- * Retorno:
- *   output - valor da saída após o último cálculo em Compute()
+ * Return:
+ *      output - output value after the last calculation in compute()
  *
- * Funcionamento:
- *   - O valor armazenado em 'output' é retornado.
- *   - Esse valor deve ser aplicado ao atuador (ex.: PWM, motor, válvula).
+ * Behavior:
+ *      - The value stored in 'output' is returned.
+ *      - This value should be applied to the actuator (e.g., PWM, motor, valve).
  *
- * Exemplo de uso:
- *   double saida = pid.LerOutput();
- *   analogWrite(pinPWM, saida);
+ * Example of use:
+ *      double outputVal = pid.getOutput();
+ *      analogWrite(pinPWM, outputVal);
  *
- * Observações:
- *   - LerOutput() não recalcula nada, apenas retorna o último valor.
- *   - Para atualizar a saída, é necessário chamar Compute() antes.
+ * Notes:
+ *      - getOutput() does not perform any recalculation; it only returns the last value.
+ *      - To update the output, compute() must be called beforehand.
  *---------------------------------------------------------------------------------------*/
 
-double PID_t::LerOutput(){
+double PIDController::getOutput() {
+
     return output;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * Reset(...)
+ * reset(...)
  *
- * Zera o acumulador da integral (soma_err_int).
+ * Resets the integral accumulator (integral_error_sum).
  *
- * Funcionamento:
- *   - Remove qualquer valor acumulado no termo integral.
- *   - Útil para evitar saturação (windup) quando o sistema muda de estado
- *     ou quando se deseja reiniciar o controlador.
+ * Behavior:
+ *      - Clears any value accumulated in the integral term.
+ *      - Useful to prevent saturation (windup) when the system changes state
+ *        or when the controller needs to be restarted.
  *
- * Exemplo de uso:
- *   pid.Reset();   // limpa o termo integral
+ * Example of use:
+ *      pid.reset();   // clears the integral term
  *
- * Observações:
- *   - Pode ser chamado em situações de reset do sistema ou troca de setpoint.
- *   - Não afeta os termos proporcional ou derivativo.
+ * Notes:
+ *      - Can be called in situations such as system reset or setpoint change.
+ *      - Does not affect the proportional or derivative terms.
  *---------------------------------------------------------------------------------------*/
 
-void PID_t::Reset(){
-    soma_err_int = 0;
+void PIDController::reset() {
+    integralTerm = 0;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * ExecucaoLimites(...)
+ * applyLimits(...)
  *
- * Aplica os limites definidos para a saída do controlador PID.
+ * Applies the limits defined for the PID controller output.
  *
- * Funcionamento:
- *   - Se 'output' for menor que 'minimo', ajusta para 'minimo'.
- *   - Se 'output' for maior que 'maximo', ajusta para 'maximo'.
- *   - Garante que a saída esteja sempre dentro da faixa permitida.
+ * Behavior:
+ *      - If 'output' is less than 'minimum', it is set to 'minimum'.
+ *      - If 'output' is greater than 'maximum', it is set to 'maximum'.
+ *      - Ensures that the output is always within the allowed range.
  *
- * Exemplo de uso:
- *   pid.DefLimitesSaida(0, 255);
- *   pid.Compute();
- *   pid.ExecucaoLimites();   // saída ficará entre 0 e 255
+ * Example of use:
+ *      pid.setOutputLimits(0, 255);
+ *      pid.compute();
+ *      pid.applyLimits();   // output will remain between 0 and 255
  *
- * Observações:
- *   - É chamado automaticamente dentro de Compute().
- *   - Evita valores inválidos ou saturação do atuador.
+ * Notes:
+ *      - Automatically called inside Compute().
+ *      - Prevents invalid values or actuator saturation.
  *---------------------------------------------------------------------------------------*/
 
-inline void PID_t::ExecucaoLimites(){
-    if(output < minimo){
-        output = minimo;
-    }else if(output > maximo){
-        output = maximo;
+inline void PIDController::applyLimits() {
+    if (output < outputMin) {
+        output = outputMin;
+    } else if (output > outputMax) {
+        output = outputMax;
     }
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * integral(...)
+ * computeIntegral(...)
  *
- * Calcula o termo integral do controlador PID.
+ * Calculates the integral term of the PID controller.
  *
- * Parâmetros:
- *   err - erro atual (setpoint - input)
- *   dt  - tempo decorrido em segundos
+ * Parameters:
+ *      err - current error (setpoint - input)
+ *      dt  - elapsed time in seconds
  *
- * Funcionamento:
- *   - Se o erro muda de sinal (cruzou o setpoint) e o estilo for PERSONALIZADO,
- *     zera o acumulador da integral (anti-overshoot).
- *   - Se a saída já está saturada (no máximo ou mínimo), não acumula integral
- *     para evitar windup.
- *   - Caso contrário, acumula err * dt em soma_err_int.
- *   - Aplica limites definidos em integral_min e integral_max.
+ * Behavior:
+ *      - If the error changes sign (crosses the setpoint) and the style is CUSTOM,
+ *        the integral accumulator is reset (anti-overshoot).
+ *      - If the output is already saturated (at maximum or minimum), the integral
+ *        is not accumulated to prevent windup.
+ *      - Otherwise, accumulates err * dt into integral_error_sum.
+ *      - Applies limits defined in integral_min and integral_max.
  *
- * Observações:
- *   - Em sistemas pouco ruidosos, melhora a resposta.
- *   - Em sistemas com setpoint oscilante, pode reduzir suavidade.
+ * Notes:
+ *      - In low-noise systems, it improves the response.
+ *      - In systems with oscillating setpoints, it may reduce smoothness.
  *---------------------------------------------------------------------------------------*/
 
-inline double PID_t::integral(double err, double dt){
-    // Evita overshoot em alguns tipos de sistema
-    // Em sistemas pouco ruidosos, a resposta é mais limpa
-    // Por outro lado, em sistemas com oscilação no setpoint,
-    // isso pode atrapalhar a suavidade da resposta
-    if(estilo == PERSONALIZADO && err * ultimo_err <= 0){
-        soma_err_int = 0;
+inline double PIDController::computeIntegral(double err, double dt) {
+    // Prevents overshoot in some types of systems
+    // In low-noise systems, the response is cleaner
+    // On the other hand, in systems with setpoint oscillation,
+    // this may reduce the smoothness of the response
+    if (antiOvershoot == CUSTOM && err * prevError <= 0) {
+        integralTerm = 0;
     }
 
-    // Se saída saturou, não acumula integral
-    if(output >= maximo && err > 0){
-        // já está no máximo e erro positivo -> não acumula
-        return soma_err_int;
-    }else if(output <= minimo && err < 0){
-        // já está no mínimo e erro negativo -> não acumula
-        return soma_err_int;
+    // If output is saturated, do not accumulate integral
+    if (output >= outputMax && err > 0) {
+        // already at maximum and error is positive -> do not accumulate
+        return integralTerm;
+    } else if (output <= outputMin && err < 0) {
+        // already at minimum and error is negative -> do not accumulate
+        return integralTerm;
     }
 
-    soma_err_int += err * dt;
+    integralTerm += err * dt;
 
-    // Limita o somatório
-    if(soma_err_int > integral_max){
-        soma_err_int = integral_max;
-    }else if(soma_err_int < integral_min){
-        soma_err_int = integral_min;
+    // Limit the integral sum
+    if (integralTerm > integralMax) {
+        integralTerm = integralMax;
+    } else if (integralTerm < integralMin) {
+        integralTerm = integralMin;
     }
 
-    return soma_err_int;
+    return integralTerm;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * derivativo(...)
+ * computeDerivative(...)
  *
- * Calcula o termo derivativo do controlador PID.
+ * Calculates the derivative term of the PID controller.
  *
- * Parâmetros:
- *   err - erro atual (setpoint - input)
- *   dt  - tempo decorrido em segundos
+ * Parameters:
+ *      err - current error (setpoint - input)
+ *      dt  - elapsed time in seconds
  *
- * Funcionamento:
- *   - Se dt == 0, retorna 0 (evita divisão por zero).
- *   - Caso contrário, calcula a variação do erro:
- *       (err - ultimo_err) / dt
+ * Behavior:
+ *      - If dt == 0, returns 0 (avoids division by zero).
+ *      - Otherwise, calculates the error variation:
+ *       (err - last_error) / dt
  *
- * Observações:
- *   - O termo derivativo ajuda a suavizar oscilações.
- *   - Pode amplificar ruídos se o sistema tiver medições instáveis.
+ * Notes:
+ *      - The derivative term helps to smooth oscillations.
+ *      - It may amplify noise if the system has unstable measurements.
  *---------------------------------------------------------------------------------------*/
 
-inline double PID_t::derivativo(double err, double dt){
-    if(dt == 0){
+inline double PIDController::computeDerivative(double err, double dt) {
+    if (dt == 0) {
         return 0;
     }
 
-    return (err - ultimo_err) / dt;
+    return (err - prevError) / dt;
 }
 
-void PID_t::Logs(Logs_t &log){
-    log.dif_err_der = dif_err_der;
-    log.estilo = estilo;
+
+/*----------------------------------------------------------------------------------------
+ * getLogs(...)
+ *
+ * Retrieves the current state and configuration of the PID controller.
+ *
+ * Parameters:
+ *      log - reference to a PidLogs structure where all values will be stored
+ *
+ * Behavior:
+ *      - Copies internal variables of the PID controller into the provided log structure.
+ *      - Includes configuration parameters (Kp, Ki, Kd, mode, type, precision, direction).
+ *      - Includes operational values (input, output, setpoint, integralTerm, prevError).
+ *      - Includes limits (outputMin, outputMax, integralMin, integralMax).
+ *      - Includes timing information (sampleTime, lastComputeTime).
+ *      - Also stores antiOvershoot style currently in use.
+ *
+ * Example of use:
+ *      PidLogs log;
+ *      pid.getLogs(log);   // retrieves all PID internal data
+ *
+ * Notes:
+ *      - Useful for debugging or monitoring the PID controller.
+ *      - Provides a snapshot of both configuration and runtime values.
+ *---------------------------------------------------------------------------------------*/
+
+void PIDController::getLogs(PidLogs &log) {
+    log.antiOvershoot = antiOvershoot;
     log.input = input;
-    log.integral_max = integral_max;
-    log.integral_min = integral_min;
+    log.integralMax = integralMax;
+    log.integralMin = integralMin;
     log.Kd = Kd;
     log.Ki = Ki;
     log.Kp = Kp;
-    log.maximo = maximo;
-    log.minimo = minimo;
-    log.modo = modo;
+    log.outputMax = outputMax;
+    log.outputMin = outputMin;
+    log.mode = mode;
     log.output = output;
-    log.precisao = precisao;
-    log.sentido = sentido;
+    log.precision = precision;
+    log.direction = direction;
     log.setpoint = setpoint;
-    log.soma_err_int = soma_err_int;
-    log.tempo = tempo;
-    log.tipo = tipo;
-    log.ultimo_err = ultimo_err;
-    log.ultimo_tempo = ultimo_tempo;
+    log.integralTerm = integralTerm;
+    log.sampleTime = sampleTime;
+    log.type = type;
+    log.prevError = prevError;
+    log.lastComputeTime = lastComputeTime;
 
     return;
 }
 
+
 /*----------------------------------------------------------------------------------------
- * troca(...)
+ * ensureOrder(...)
  *
- * Função auxiliar para garantir que dois valores fiquem em ordem crescente.
+ * Auxiliary function to ensure that two values are in ascending order.
  *
- * Parâmetros:
- *   a - primeiro valor
- *   b - segundo valor
+ * Parameters:
+ *      a - first value
+ *      b - second value
  *
- * Funcionamento:
- *   - Se 'a' for maior que 'b', troca os valores.
- *   - Usada em funções de limites para garantir que o menor valor seja
- *     armazenado como mínimo e o maior como máximo.
+ * Behavior:
+ *      - If 'a' is greater than 'b', the values are swapped.
+ *      - Used in limit functions to guarantee that the smaller value is stored
+ *        as minimum and the larger as maximum.
  *
- * Exemplo de uso:
- *   double min = 10, max = 5;
- *   troca(min, max);   // agora min = 5, max = 10
+ * Example of use:
+ *      double min = 10, max = 5;
+ *      swap(min, max);   // now min = 5, max = 10
  *
- * Observações:
- *   - Simples utilitário.
- *   - Evita erros de configuração quando os limites são passados invertidos.
+ * Notes:
+ *      - Simple utility.
+ *      - Prevents configuration errors when limits are passed in reversed order.
  *---------------------------------------------------------------------------------------*/
 
-void troca(double &a, double &b){
+void ensureOrder(double &a, double &b){
     if(a > b){
         double temp = a;
         a = b;
@@ -718,6 +758,4 @@ void troca(double &a, double &b){
     return;
 }
 
-// Fim
-
-
+// End

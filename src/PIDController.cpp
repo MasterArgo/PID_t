@@ -1,5 +1,5 @@
 /****************************************************************************************
- * PIDController Library - Version 2.3.3
+ * PIDController Library - Version 2.3.4
  * Language: C++
  * Author: Ícaro Razera (icarorazera@gmail.com)
  * Target platform: Arduino IDE
@@ -21,6 +21,7 @@
  *  v2.2.2 - Added a structure for collecting logs.
  *  v2.3.2 - Translation to English.
  *  v2.3.3 - Reorganization of folders.
+ *  v2.3.4 - Reorganization of folders
  *
  * License:
  *  This code is licensed under the MIT License.
@@ -760,5 +761,6 @@ void ensureOrder(double &a, double &b){
 }
 
 // End
+
 
 

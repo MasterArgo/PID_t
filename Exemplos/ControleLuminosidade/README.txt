@@ -5,7 +5,8 @@ Componentes utilizados:
 - 1 LED -> atuador que emite luz e será controlado via PWM.
 - 1 resistor de 330 Ω -> limita a corrente do LED, protegendo-o contra sobrecarga.
 - 1 fotoresistor (LDR) -> sensor que mede a intensidade da luz ambiente (incluindo a luz do LED).
-- 2 resistores de 5.1 kΩ -> usados em conjunto com o LDR e o potenciômetro para formar divisores de tensão, permitindo que o Arduino leia valores analógicos proporcionais à luminosidade e ao setpoint.
+- 2 resistores de 5.1 kΩ (ou 1 resistor de 10 kΩ) -> usados em conjunto com o LDR e o potenciômetro para formar divisores de tensão, permitindo que o Arduino leia valores analógicos proporcionais à luminosidade e ao setpoint.
+- 1 capacitor eletrolítico de 100 uF 25V -> usado como filtro para a leitura do LDR. Ligado em paralelo ao(s) resistor(es) de divisão de tensão
 - 1 potenciômetro -> define o nível de luminosidade desejado (setpoint).
 - 1 Arduino Nano -> microcontrolador responsável por executar o algoritmo PID e gerar o sinal PWM para o LED.
 - 7 fios macho–macho e 2 fios macho–fêmea -> realizam as conexões entre os componentes e a placa.
@@ -25,4 +26,3 @@ O projeto mostra, de forma prática e visual, como um controlador PID pode ser a
 - Feedback (realimentação de um sistema).
 - Controle automático de variáveis físicas (neste caso, luminosidade).
 - Ajuste de parâmetros PID (Kp, Ki, Kd) e seus efeitos na estabilidade e resposta do sistema.
-

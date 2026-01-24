@@ -1,5 +1,5 @@
-#ifndef PIDCONTROLLER_H
-#define PIDCONTROLLER_H
+#ifndef PID_T_H
+#define PID_T_H
 
 #include <float.h>
 
@@ -71,9 +71,9 @@ struct PidLogs {
 };
 
 // -----------------------------
-// MAIN CLASS PIDController
+// MAIN CLASS PID_t
 // -----------------------------
-class PIDController {
+class PID_t {
 private:
     // -----------------------------
     // TUNING CONSTANTS
@@ -129,8 +129,8 @@ public:
     // -----------------------------
     // CONSTRUCTOR / DESTRUCTOR
     // -----------------------------
-    PIDController();
-    ~PIDController();
+    PID_t();
+    ~PID_t();
 
     // -----------------------------
     // MAIN FUNCTION
@@ -172,5 +172,6 @@ public:
 void ensureOrder(double &a, double &b);
 
 #endif
+
 
 

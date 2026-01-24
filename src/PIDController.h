@@ -172,5 +172,5 @@ public:
 void ensureOrder(double &a, double &b);
 
 #endif
-#endif
+
 

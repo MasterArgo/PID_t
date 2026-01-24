@@ -8,9 +8,9 @@ Como usar?
 1. Crie um objeto PID
 	ex.:
 
-	#include "PIDController.h"	
+	#include "PID_t.h"	
 
-	PIDController MeuPID;
+	PID_t MeuPID;
 	
 2. Defina os ganhos (Kp, Ki, Kd)
 	- Use o método setTunings(Kp, Ki, Kd) para atribuir.
@@ -111,10 +111,10 @@ Como usar?
 
 Até então, tem-se algo parecido com isso:
 
-#include "PIDController.h"
+#include "PID_t.h"
 
 // Declaração do objeto de controle PID
-PIDController MeuPID;
+PID_t MeuPID;
 
 // Declaração das constantes de PID
 double Kp_MeuPID = 1.0;
@@ -164,7 +164,7 @@ void setup(){
 
 No fim, o esqueleto será algo parecido com isto:
 
-#include "PIDController.h"
+#include "PID_t.h"
 
 // Declaração dos pinos do Arduino
 const int sensor = A0;
@@ -172,7 +172,7 @@ const int potenciometro = A1;
 const int porta_saida = 3;
 
 // Declaração do objeto de controle PID
-PIDController MeuPID;
+PID_t MeuPID;
 
 // Declaração das constantes de PID
 double Kp_MeuPID = 1.0;
@@ -233,3 +233,4 @@ void loop(){
 // Como resultado da versão v2.2.1, o método Compute() retorna o output,
 // então pode ser feito:
 // double valor_saida = MeuPID.Compute(); 
+

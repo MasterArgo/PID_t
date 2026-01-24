@@ -1,5 +1,5 @@
 /****************************************************************************************
- * PID_t Library - Version 2.3.4
+ * PID_t Library - Version 2.3.5
  * Language: C++
  * Author: Ícaro Razera (icarorazera@gmail.com)
  * Target platform: Arduino IDE
@@ -761,3 +761,4 @@ void ensureOrder(double &a, double &b){
 }
 
 // End
+

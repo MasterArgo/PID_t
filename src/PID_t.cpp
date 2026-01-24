@@ -1,5 +1,5 @@
 /****************************************************************************************
- * PIDController Library - Version 2.3.4
+ * PID_t Library - Version 2.3.4
  * Language: C++
  * Author: Ícaro Razera (icarorazera@gmail.com)
  * Target platform: Arduino IDE
@@ -28,13 +28,13 @@
  *  See the LICENSE file for more details.
  ****************************************************************************************/
 
-#include "PIDController.h"
+#include "PID_t.h"
 #include <Arduino.h>
 
 /*----------------------------------------------------------------------------------------
- * PIDController()
+ * PID_t()
  *
- * Constructor of the PIDController class.
+ * Constructor of the PID_t class.
  *
  * Default initialization:
  *      - Execution interval: 200 ms
@@ -53,7 +53,7 @@
  *        adjusted as needed in setup().
  *---------------------------------------------------------------------------------------*/
 
-PIDController::PIDController()
+PID_t::PID_t()
     : Kp(0), Ki(0), Kd(0),
       sampleTime(200),
       prevError(0),
@@ -71,9 +71,9 @@ PIDController::PIDController()
 
 
 /*----------------------------------------------------------------------------------------
- * ~PIDController()
+ * ~PID_t()
  *
- * Destructor of the PIDController class.
+ * Destructor of the PID_t class.
  *
  * Behavior:
  *      - Currently does not perform any specific action, since the class does not
@@ -90,7 +90,7 @@ PIDController::PIDController()
  *        clarifies that there are no pending release tasks.
  *---------------------------------------------------------------------------------------*/
 
-PIDController::~PIDController(){
+PID_t::~PID_t(){
     // Por enquanto, nada...
 }
 
@@ -125,7 +125,7 @@ PIDController::~PIDController(){
  *  - Returns the Output.
  *---------------------------------------------------------------------------------------*/
 
-double PIDController::compute() {
+double PID_t::compute() {
     if (mode == AUTOMATIC) {
         unsigned long now = (precision == PRECISE ? micros() : millis());
         unsigned long elapsedTime = now - lastComputeTime;
@@ -181,7 +181,7 @@ double PIDController::compute() {
  *      Values that are too high may cause oscillation; values that are too low may make the system slow.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setTunings(double Kp_init, double Ki_init, double Kd_init) {
+void PID_t::setTunings(double Kp_init, double Ki_init, double Kd_init) {
     constexpr double ADJUST_MICROS = 1000000.0;
     constexpr double ADJUST_MILLIS = 1000.0;
     double adjust = (precision == PRECISE ? ADJUST_MICROS : ADJUST_MILLIS);
@@ -226,7 +226,7 @@ void PIDController::setTunings(double Kp_init, double Ki_init, double Kd_init) {
  *      make the control sluggish.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setSampleTime(unsigned long newSampleTime) {
+void PID_t::setSampleTime(unsigned long newSampleTime) {
     sampleTime = newSampleTime;
 
     return;
@@ -256,7 +256,7 @@ void PIDController::setSampleTime(unsigned long newSampleTime) {
  *        needs to be temporarily disabled.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setMode(PIDMode newMode) {
+void PID_t::setMode(PIDMode newMode) {
     mode = newMode;
 
     return;
@@ -288,7 +288,7 @@ void PIDController::setMode(PIDMode newMode) {
  *        relative corrections are desired.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setType(PIDType newType) {
+void PID_t::setType(PIDType newType) {
     type = newType;
 
     return;
@@ -318,7 +318,7 @@ void PIDController::setType(PIDType newType) {
  *        to use REVERSE.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setDirection(PIDDirection newDirection) {
+void PID_t::setDirection(PIDDirection newDirection) {
     direction = newDirection;
 
     return;
@@ -348,7 +348,7 @@ void PIDController::setDirection(PIDDirection newDirection) {
  *        behavior is desired, avoiding overshoot or sluggish response.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setAntiOvershootStyle(PIDAntiOvershootStyle newStyle) {
+void PID_t::setAntiOvershootStyle(PIDAntiOvershootStyle newStyle) {
     antiOvershoot = newStyle;
 
     return;
@@ -385,7 +385,7 @@ void PIDController::setAntiOvershootStyle(PIDAntiOvershootStyle newStyle) {
  *        demands high temporal accuracy, such as in motor control or fast measurements.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setPrecision(PIDPrecision newPrecision) {
+void PID_t::setPrecision(PIDPrecision newPrecision) {
     precision = newPrecision;
 
     return;
@@ -415,7 +415,7 @@ void PIDController::setPrecision(PIDPrecision newPrecision) {
  *      - Prevents saturation or invalid output values.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setOutputLimits(double minVal, double maxVal) {
+void PID_t::setOutputLimits(double minVal, double maxVal) {
     ensureOrder(minVal, maxVal);
 
     outputMin = minVal;
@@ -449,7 +449,7 @@ void PIDController::setOutputLimits(double minVal, double maxVal) {
  *      - Overly restrictive values may reduce the corrective action of the integral.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setIntegralLimits(double minVal, double maxVal) {
+void PID_t::setIntegralLimits(double minVal, double maxVal) {
     ensureOrder(minVal, maxVal);
 
     integralMax = maxVal;
@@ -479,7 +479,7 @@ void PIDController::setIntegralLimits(double minVal, double maxVal) {
  *      - It is the value that the system will attempt to reach and maintain.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setSetpoint(double newSetpoint) {
+void PID_t::setSetpoint(double newSetpoint) {
     setpoint = newSetpoint;
 
     return;
@@ -506,7 +506,7 @@ void PIDController::setSetpoint(double newSetpoint) {
  *      - Represents the controlled variable (e.g., temperature, speed, position).
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::setInput(double newInput) {
+void PID_t::setInput(double newInput) {
     input = newInput;
 
     return;
@@ -534,7 +534,7 @@ void PIDController::setInput(double newInput) {
  *      - To update the output, compute() must be called beforehand.
  *---------------------------------------------------------------------------------------*/
 
-double PIDController::getOutput() {
+double PID_t::getOutput() {
 
     return output;
 }
@@ -558,7 +558,7 @@ double PIDController::getOutput() {
  *      - Does not affect the proportional or derivative terms.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::reset() {
+void PID_t::reset() {
     integralTerm = 0;
 
     return;
@@ -585,7 +585,7 @@ void PIDController::reset() {
  *      - Prevents invalid values or actuator saturation.
  *---------------------------------------------------------------------------------------*/
 
-inline void PIDController::applyLimits() {
+inline void PID_t::applyLimits() {
     if (output < outputMin) {
         output = outputMin;
     } else if (output > outputMax) {
@@ -618,7 +618,7 @@ inline void PIDController::applyLimits() {
  *      - In systems with oscillating setpoints, it may reduce smoothness.
  *---------------------------------------------------------------------------------------*/
 
-inline double PIDController::computeIntegral(double err, double dt) {
+inline double PID_t::computeIntegral(double err, double dt) {
     // Prevents overshoot in some types of systems
     // In low-noise systems, the response is cleaner
     // On the other hand, in systems with setpoint oscillation,
@@ -668,7 +668,7 @@ inline double PIDController::computeIntegral(double err, double dt) {
  *      - It may amplify noise if the system has unstable measurements.
  *---------------------------------------------------------------------------------------*/
 
-inline double PIDController::computeDerivative(double err, double dt) {
+inline double PID_t::computeDerivative(double err, double dt) {
     if (dt == 0) {
         return 0;
     }
@@ -702,7 +702,7 @@ inline double PIDController::computeDerivative(double err, double dt) {
  *      - Provides a snapshot of both configuration and runtime values.
  *---------------------------------------------------------------------------------------*/
 
-void PIDController::getLogs(PidLogs &log) {
+void PID_t::getLogs(PidLogs &log) {
     log.antiOvershoot = antiOvershoot;
     log.input = input;
     log.integralMax = integralMax;
@@ -761,6 +761,3 @@ void ensureOrder(double &a, double &b){
 }
 
 // End
-
-
-
